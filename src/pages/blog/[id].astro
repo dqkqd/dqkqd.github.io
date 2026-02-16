@@ -1,0 +1,25 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import Blog from "../../layouts/BlogLayout.astro";
+import ScrollProgress from "../../components/ScrollProgress.vue";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({
+    params: { id: post.id },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<"blog">;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<ScrollProgress client:only="vue" />
+<Blog {...post.data}>
+  <Content />
+</Blog>
