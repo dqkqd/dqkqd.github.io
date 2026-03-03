@@ -1,0 +1,9 @@
+---
+import NavBar from "./NavBar.astro";
+import ScrollProgress from "./ScrollProgress.vue";
+---
+
+<div class="sticky top-0">
+  <NavBar />
+  <ScrollProgress client:only="vue" />
+</div>

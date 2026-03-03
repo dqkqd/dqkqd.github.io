@@ -1,25 +1,28 @@
 ---
+import "../styles/global.css";
+import BlogHeader from "../components/BlogHeader.astro";
+
 interface Props {
   title: string;
   description: string;
   pubDatetime: Date;
 }
-import "../styles/global.css";
 
 const { title, pubDatetime: pubDate } = Astro.props;
 ---
 
-<html lang="en">
+<html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width" />
     <title>{title}</title>
   </head>
   <body>
-    <article class="prose prose-lg mx-auto px-4 sm:px-6">
+    <BlogHeader />
+    <main class="prose prose-lg mx-auto px-4 sm:px-6">
       <h1>{title}</h1>
       <slot />
-    </article>
+    </main>
     <p>Written on: {pubDate}</p>
   </body>
 </html>

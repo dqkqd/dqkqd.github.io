@@ -12,18 +12,9 @@ const progress = computed(() => {
 </script>
 
 <template>
-  <div id="scroll-progress" :style="{ width: progress + '%' }" />
+  <div
+    id="scroll-progress"
+    class="linear left-0 z-9999 h-1 w-0 bg-blue-500 transition-[width]"
+    :style="{ width: progress + '%' }"
+  />
 </template>
-
-<style scoped>
-#scroll-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 4px;
-  width: 0%;
-  background: currentcolor;
-  transition: width 0.1s ease;
-  color: #7287fd;
-}
-</style>
