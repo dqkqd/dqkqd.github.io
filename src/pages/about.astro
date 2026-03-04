@@ -1,28 +1,26 @@
 ---
-
+import "../styles/global.css";
+import NavBar from "../components/NavBar.astro";
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Astro</title>
+    <title>About me</title>
   </head>
   <body>
-    <a href="/">Home</a>
-    <a href="/about/">About</a>
-    <a href="/blog/">Blog</a>
-    <h1>About Me</h1>
-    <h2>... and my new Astro site!</h2>
-
-    <p>
-      I am working through Astro's introductory tutorial. This is the second
-      page on my website, and it's the first one I built myself!
-    </p>
-
-    <p>
-      This site will update as I complete more of the tutorial, so keep checking
-      back and see how my journey is going!
-    </p>
+    <NavBar />
+    <div class="p-4">
+      <h1 class="text-heading text-3xl font-bold">About Me</h1>
+      <p class="text-lg">
+        Hello, I'm Khanh, a programmer curious in backend development, operating
+        systems, distributed systems, and databases.
+      </p>
+      <p class="text-lg">
+        I live in Japan, spend days writing Python, and nights hacking on open
+        source software.
+      </p>
+    </div>
   </body>
 </html>
