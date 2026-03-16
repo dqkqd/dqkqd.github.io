@@ -2,6 +2,8 @@
 import { getCollection } from "astro:content";
 import "../styles/global.css";
 import NavBar from "../components/NavBar.astro";
+import BlogCard from "../components/BlogCard.astro";
+import { SITE } from "../site.ts";
 
 const blogs = await getCollection("blog");
 ---
@@ -10,18 +12,22 @@ const blogs = await getCollection("blog");
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{SITE.name}</title>
   </head>
-  <NavBar />
-  <h1>Blog list</h1>
-  <ul>
-    {
-      blogs.map((post) => (
-        <li>
-          <a href={`/blog/${post.id}`}>{post.data.title}</a>
-        </li>
-      ))
-    }
-  </ul>
 
+  <body>
+    <NavBar />
 
+    <main class="mt-6 px-4">
+      <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
+
+      <div class="space-y-4">
+        {
+          blogs.map((blog) => (
+            <BlogCard {...blog.data} href={`/blog/${blog.id}`} />
+          ))
+        }
+      </div>
+    </main>
+  </body>
 </html>
