@@ -1,0 +1,29 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  pubDatetime: Date;
+  href: string;
+}
+
+const { title, description, pubDatetime, href } = Astro.props;
+
+const formattedDate = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+  year: "numeric",
+}).format(new Date(pubDatetime));
+---
+
+<div class="grid grid-cols-[auto_1fr] items-baseline gap-3">
+  <time class="text-xs text-gray-400 tabular-nums">
+    {formattedDate}
+  </time>
+
+  <a
+    href={href}
+    class="text-base text-inherit underline decoration-gray-500/60 decoration-dotted hover:decoration-gray-400"
+  >
+    {title}
+  </a>
+</div>
