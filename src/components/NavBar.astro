@@ -2,9 +2,19 @@
 import { SITE } from "../site.ts";
 ---
 
-<div class="flex flex-row justify-between bg-white px-4 pb-1 shadow">
-  <a href="/" class="text-lg font-bold">{SITE.name}</a>
-  <div class="flex gap-3">
-    <a href="/about" class="underline">About</a>
+<nav
+  class="flex items-center justify-between border-b border-gray-200 px-4 py-3"
+>
+  <a href="/" class="text-lg font-semibold tracking-tight">
+    {SITE.name}
+  </a>
+
+  <div class="flex items-center gap-6 text-sm text-gray-600">
+    <a
+      href="/about"
+      class="underline decoration-gray-400/50 decoration-dotted transition hover:decoration-gray-600"
+    >
+      About
+    </a>
   </div>
-</div>
+</nav>
