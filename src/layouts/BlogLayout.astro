@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import BlogHeader from "../components/BlogHeader.astro";
+import NavBar from "../components/NavBar.astro";
 
 interface Props {
   title: string;
@@ -18,7 +18,7 @@ const { title, pubDatetime: pubDate } = Astro.props;
     <title>{title}</title>
   </head>
   <body>
-    <BlogHeader />
+    <NavBar />
     <main class="prose prose-lg mx-auto px-4 sm:px-6">
       <h1>{title}</h1>
       <slot />
