@@ -1,12 +1,11 @@
 ---
 interface Props {
   title: string;
-  description: string;
   pubDatetime: Date;
   href: string;
 }
 
-const { title, description, pubDatetime, href } = Astro.props;
+const { title, pubDatetime, href } = Astro.props;
 
 const formattedDate = new Intl.DateTimeFormat("en-US", {
   month: "short",

@@ -14,7 +14,6 @@ DATETIME=$(date +"%Y-%m-%dT%H:%M:%S%z")
 cat >"$FILE" <<EOF
 ---
 title:
-description:
 pubDatetime: $DATETIME
 ---
 EOF
