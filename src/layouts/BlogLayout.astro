@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import NavBar from "../components/NavBar.astro";
+import BaseLayout from "./BaseLayout.astro";
 
 interface Props {
   title: string;
@@ -10,18 +10,10 @@ interface Props {
 const { title, pubDatetime: pubDate } = Astro.props;
 ---
 
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>{title}</title>
-  </head>
-  <body>
-    <NavBar />
-    <main class="prose prose-lg mx-auto px-4 sm:px-6">
-      <h1>{title}</h1>
-      <slot />
-    </main>
-    <p>Written on: {pubDate}</p>
-  </body>
-</html>
+<BaseLayout title={title}>
+  <main class="prose prose-lg mx-auto px-4 sm:px-6">
+    <h1>{title}</h1>
+    <slot />
+  </main>
+  <p>Written on: {pubDate}</p>
+</BaseLayout>

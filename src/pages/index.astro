@@ -1,33 +1,22 @@
 ---
 import { getCollection } from "astro:content";
 import "../styles/global.css";
-import NavBar from "../components/NavBar.astro";
 import BlogCard from "../components/BlogCard.astro";
 import { SITE } from "../site.ts";
+import BaseLayout from "../layouts/BaseLayout.astro";
 
 const blogs = await getCollection("blog");
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{SITE.name}</title>
-  </head>
-
-  <body>
-    <NavBar />
-
-    <main class="px-4">
-      <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
-
-      <div class="space-y-4">
-        {
-          blogs.map((blog) => (
-            <BlogCard {...blog.data} href={`/blog/${blog.id}`} />
-          ))
-        }
-      </div>
-    </main>
-  </body>
-</html>
+<BaseLayout title={SITE.name}>
+  <main class="px-4">
+    <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
+    <div class="space-y-4">
+      {
+        blogs.map((blog) => (
+          <BlogCard {...blog.data} href={`/blog/${blog.id}`} />
+        ))
+      }
+    </div>
+  </main>
+</BaseLayout>
