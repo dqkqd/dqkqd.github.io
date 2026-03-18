@@ -9,7 +9,7 @@ if [ -e "$FILE" ]; then
   exit 1
 fi
 
-DATETIME=$(date +"%Y-%m-%dT%H:%M:%S%z")
+DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%S%z")
 
 cat >"$FILE" <<EOF
 ---

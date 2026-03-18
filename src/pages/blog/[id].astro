@@ -1,23 +1,22 @@
 ---
-import { getCollection, render, type CollectionEntry } from "astro:content";
+import { render } from "astro:content";
 import Blog from "../../layouts/BlogLayout.astro";
+import { getStaticBlogs, type BlogEntry } from "../../lib/blog.ts";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("blog");
-  return posts.map((post) => ({
-    params: { id: post.id },
-    props: { post },
-  }));
+  return await getStaticBlogs();
 }
 
 interface Props {
-  post: CollectionEntry<"blog">;
+  blog: BlogEntry;
+  prevBlog: BlogEntry | undefined;
+  nextBlog: BlogEntry | undefined;
 }
 
-const { post } = Astro.props;
-const { Content } = await render(post);
+const { blog, nextBlog, prevBlog } = Astro.props;
+const { Content } = await render(blog);
 ---
 
-<Blog {...post.data}>
+<Blog {...blog.data} nextBlog={nextBlog} prevBlog={prevBlog}>
   <Content />
 </Blog>

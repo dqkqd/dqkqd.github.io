@@ -1,22 +1,18 @@
 ---
-import { getCollection } from "astro:content";
 import "../styles/global.css";
 import BlogCard from "../components/BlogCard.astro";
 import { SITE } from "../site.ts";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { getSortedBlogs } from "../lib/blog.ts";
 
-const blogs = await getCollection("blog");
+const blogs = await getSortedBlogs();
 ---
 
 <BaseLayout title={SITE.name}>
   <main class="px-4">
     <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
     <div class="space-y-4">
-      {
-        blogs.map((blog) => (
-          <BlogCard {...blog.data} href={`/blog/${blog.id}`} />
-        ))
-      }
+      {blogs.map((blog) => <BlogCard {...blog.data} href={blog.href} />)}
     </div>
   </main>
 </BaseLayout>

@@ -1,13 +1,15 @@
 ---
 import "../styles/global.css";
 import BaseLayout from "./BaseLayout.astro";
+import type { BlogEntry } from "../lib/blog";
 
 interface Props {
   title: string;
-  pubDatetime: Date;
+  nextBlog: BlogEntry | undefined;
+  prevBlog: BlogEntry | undefined;
 }
 
-const { title, pubDatetime: pubDate } = Astro.props;
+const { title, nextBlog, prevBlog } = Astro.props;
 ---
 
 <BaseLayout title={title}>
@@ -15,5 +17,40 @@ const { title, pubDatetime: pubDate } = Astro.props;
     <h1>{title}</h1>
     <slot />
   </main>
-  <p>Written on: {pubDate}</p>
+
+  <footer class="mt-16 border-t border-zinc-200 dark:border-zinc-800">
+    <div
+      class="mx-auto flex max-w-prose items-center justify-between gap-4 px-4 py-8 text-sm sm:px-6"
+    >
+      <div class="flex-1">
+        {
+          prevBlog && (
+            <a
+              href={prevBlog.href}
+              class="group flex flex-col text-zinc-500 no-underline transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              <span class="mb-1 text-xs tracking-wide uppercase">
+                ← Previous
+              </span>
+              <span class="group-hover:underline">{prevBlog.data.title}</span>
+            </a>
+          )
+        }
+      </div>
+
+      <div class="flex-1 text-right">
+        {
+          nextBlog && (
+            <a
+              href={nextBlog.href}
+              class="group flex flex-col items-end text-zinc-500 no-underline transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              <span class="mb-1 text-xs tracking-wide uppercase">Next →</span>
+              <span class="group-hover:underline">{nextBlog.data.title}</span>
+            </a>
+          )
+        }
+      </div>
+    </div>
+  </footer>
 </BaseLayout>
