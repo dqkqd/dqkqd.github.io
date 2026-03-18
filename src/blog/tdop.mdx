@@ -1,78 +1,105 @@
 ---
-title: Top Down operator precedence parsing
+title: Top down operator precedence parsing
 pubDatetime: 2026-02-16T16:35:25+0900
 ---
 
 import { Image } from "astro:assets";
 
-Recently I came across [this blog post](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
-about top-down operator precedence parser. Given a very little background on the
-topic, I had a hard time to grasp the idea. So I decided to implement one myself,
-hopefully I could understand it.
+Top down operator precedence (TDOP) is
+a simple yet powerful algorithm for parsing
+arithmetic expressions.
+It is applied in [rust analyzer](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html),
+and [the Zig parser appears to use it as well](https://github.com/ziglang/zig/blob/738d2be9d6b6ef3ff3559130c05159ef53336224/lib/std/zig/Parse.zig#L1554-L1591).
+
+In this post, I'll implement a TDOP
+parser for a toy expression programming language (`1 + 2 * (3 + 4) - 5`).
+I'll try to keep it simple such that no background on parsing
+is required.
 
 ## Background
 
-At a high level, a parser consumes tokens and creates a parsed tree, which will
-be fed into the compiler or the intepreter.
+The purpose of a parser is to transforming a stream of tokens
+into a parse tree. It inspects each token
+and predicts which expression should be used,
+for example, when a parser sees `print`, it knows the
+expression might be `print(<something>)`, and applies
+that pattern to create a parsed tree.
 
 import tdop_parser_background from "../assets/tdop-parser-background.png";
 
 <Image src={tdop_parser_background} alt="Parsing flows" class="mx-auto" />
 
-For example, to parse `print("Hello World")`, it can look at the `print`
-token, realizes the pattern is `print(<something>)`,
-and applies that to create a correct tree.
-([Try this in the playground](https://play.rust-lang.org/?version=stable&mode=debug&edition=2024&gist=1a23f4831884c00fdf1cdf2f91d33e45)).
+We can parse `print("Hello World")` like this, just straight walk
+from left-to-right, consuming tokens as we move forward.
 
 ```rust
-const TOKENS: [&'static str; 6] = ["print", "(", "\"", "Hello Wolrd", "\"", ")"];
+const TOKENS: [&'static str; 4] = [
+  "print", "(", r#""Hello World""#, ")"
+];
 
 fn parse_print(tokenizer: &mut Tokenizer) -> PrintExpr {
   expect_token(tokenizer, "print");
   expect_token(tokenizer, "(");
-  expect_token(tokenizer, "\"");
-  let string = tokenizer.next().expect("should have string to print");
-  expect_token(tokenizer, "\"");
+  let string = tokenizer.next().unwrap();
   expect_token(tokenizer, ")");
   PrintExpr(string.to_string())
 }
 ```
 
-People call this Recursive Descent Parser.
-The general idea is that you define a set of
-grammar and let the parser predict which pattern
-is a match based on the current token (or
-several tokens ahead).
-However, implementing a parser for
-arithmetic expressions using recursive
-descent is not a trivial task[^1].
-The main reason is that a recursive
-descent parser relies on grammar
-and doesn't know about operators, making
-it hard to parse expressions without
-looking far ahead.
+However, this doesn't play well with arithmetic expressions,
+there are two main reasons.
 
-## Top down operator precedence (TDOP) parser
+### **Associativity problem**
 
-TDOP parser overcomes the above challenges by
-treating operators as first classes.
-The rest of this post is about implementing a subset
-of arithmetic expressions parser.
-At the end, we will be able to parse
-and evaluate these kind of expressions:
+When a parser sees `2` in `1 + 2 * 3`, it must determine which operator `2` is associated to.
+From our perspective, we know it must be `*`, which gives us this tree.
 
-```text
-1 + 2 * (3 + 4) - 5
-```
+import img_1773919071 from "../assets/tdop_20260319201749.png";
+
+<Image src={img_1773919071} alt="Parsed tree for 1 + (2 * 3)" class="mx-auto" />
+
+But our parser doesn't know about this, it sees `+` and `*` as simply tokens.
+and since it consumes tokens left-to-right, it hasn't seen `*` yet when it reaches `2`.
+
+import img_1773919322 from "../assets/tdop_20260319202201.png";
+
+<Image
+  src={img_1773919322}
+  alt="The parser hasn't seen * when it reaches 2"
+  class="mx-auto"
+/>
+
+### **Prefix and infix operators problem**
+
+In arithmetic expressions, tokens have
+different meanings based on theirs position.
+For example, `-` can be interpreted as:
+
+- Negative operator in `-1 + 2`.
+- Binary sub operator in `1 - 2`.
+
+The parser must distinguish which operator to apply based on the context,
+not from the token itself.
+
+## TDOP parser
+
+The TDOP parser overcomes the above challenges by
+treating operators as first classes, i.e.
+it sees `-` in `-1` and `1 - 2` differently.
+Let's implement one to see how it can be done.
 
 ### Boilerplate
 
-We need some setups before implementing a TDOP parser.
-
 #### Tokenizer
 
-Our parser will handle a small set of
-operators: `+`, `-`, `*`, and parenthesis:
+The parser needs to consume tokens somewhere,
+we create a tokenizer for that purpose, helping
+us transform source code into a stream of tokens,
+which our parser can use.
+
+Our toy programming language consists of
+numbers, `+`, `-`, `*`, and parentheses,
+we define an enum `Token` to represent them.
 
 ```rust
 #[derive(Debug, Copy, Clone)]
@@ -86,13 +113,13 @@ enum Token {
 }
 ```
 
-The tokenizer transforms a string
-into a stream of tokens. Since our goal isn't writing a tokenizer,
-a simple regex suffices: `[0-9]+|[+\-*()]`.
-It needs to support `next` and `peek`
-operations, so we use `Peekable<floatoIter<Token>>`.
+We don't need a perfect tokenizer (our goal isn't writing one anyway),
+just a simple regex that can parse all of the
+above tokens is enough: `[0-9]+|[+\-*()]`.
+It also needs to support `next` and `peek` operations,
+we use [Peekable\<Iterator\>](https://doc.rust-lang.org/std/iter/struct.Peekable.html).
 
-```rust {6}
+```rust {3,6,21}
 use regex::Regex;
 
 type Tokenizer = std::iter::Peekable<std::vec::IntoIter<Token>>;
@@ -117,8 +144,7 @@ fn tokenizer(program: &str) -> Tokenizer {
 }
 ```
 
-Given an expression `(3 + 4)`,
-the tokenizer will produce this stream:
+Given an expression `(3 + 4)`, the tokenizer produces this stream:
 
 ```rust
 LParen, Number(3), Add, Number(4), RParen
@@ -126,26 +152,30 @@ LParen, Number(3), Add, Number(4), RParen
 
 #### Expressions
 
-Our parser creates expressions from the tokenizer, we define an enum for representing expressions.
-We start with just a literal expression and binary expressions for now
-(more will come later as we build up our parser).
+We got the parser's input - which are tokens.
+But what about its output - the parsed tree?
+Recall from [the tree earlier](#associativity-problem),
+its leaf nodes are just literal numbers, while its
+internal nodes are expressions.
+
+<Image src={img_1773919071} alt="Parsed tree for 1 + (2 * 3)" class="mx-auto" />
+
+To represent this tree, an enum with different
+types of nodes is a perfect fit.
+To debug the parsed tree, our expressions need to be printable
+and evaluable. For printing, we implement `Display`
+using [Polish Notation](https://en.wikipedia.org/wiki/Polish_notation),
+for evaluating, a simple recursive walk should work just fine.
 
 ```rust
+use std::fmt;
+
 enum Expr {
   Literal(u32),
   BinaryAdd { lhs: Box<Expr>, rhs: Box<Expr> }, // lhs + rhs
   BinarySub { lhs: Box<Expr>, rhs: Box<Expr> }, // lhs - rhs
   BinaryMul { lhs: Box<Expr>, rhs: Box<Expr> }, // lhs * rhs
 }
-```
-
-To make it easier to test and debug, make sure to our expressions is
-printable and evaluable.
-For printing, we implement `Display` using [Polish Notation](https://en.wikipedia.org/wiki/Polish_notation).
-For evaluating, a simple recursive walk and compute should work.
-
-```rust
-use std::fmt;
 
 impl fmt::Display for Expr {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -168,23 +198,38 @@ fn eval(expr: &Expr) -> i64 {
 }
 ```
 
-We need an entry point for our parser. The `expr` takes the tokenizer
-and produces an `Expr` - this is where we implement the TDOP algorithm.
-Then a `parse` function, which is a thin wrapper around `expr`,
-parses source code into a parsed tree.
+The tree above can be constructed like this.
 
 ```rust
-fn expr(tokenizer: &mut Tokenizer) -> Expr {
-  todo!()
+BinaryAdd {
+    lhs: Literal(1),
+    rhs: BinaryMul {
+        lhs: Literal(2),
+        rhs: Literal(3),
+    },
 }
+```
 
+Its polish notation is: `(+ 1 (* 2 3))`, and it is evaluated as `7`.
+
+#### Parser entrypoint
+
+Our parser needs an entry point, where it receives source code
+and produces the parsed tree. This is where we implement
+the TDOP algorithm.
+
+```rust
 fn parse(program: &str) -> Expr {
   let mut tokenizer = tokenizer(program);
   expr(&mut tokenizer)
 }
+
+fn expr(tokenizer: &mut Tokenizer) -> Expr {
+  todo!()
+}
 ```
 
-We also need some utility for testing:
+We also add some utility for testing.
 
 ```rust
 mod test {
@@ -200,11 +245,13 @@ mod test {
 }
 ```
 
+The boilerplate is done, let's start implementing our parser.
+
 ### Literal expression
 
-We had everything we need, let's start with the easiest one:
-creating a literal expression. This is simple, assuming
-the expression only contains number:
+We begin with the easiest one: literal numbers with no operators.
+This is simple, just get the next token from the tokenizer
+and wrap it as `Expr::Literal`.
 
 ```rust
 fn literal(tokenizer: &mut Tokenizer) -> Expr {
@@ -215,14 +262,12 @@ fn literal(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-We update `expr` and add a testcase.
+We also update `expr` and add a testcase.
 
-```rust {2}
+```rust {2,10}
 fn expr(tokenizer: &mut Tokenizer) -> Expr {
   literal(tokenizer)
 }
-
-// ...
 
 mod test {
 // ...
@@ -241,38 +286,73 @@ test literal ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
-### Binary Expressions
+### Binary expressions
 
 The next one is binary expressions of the form `lhs <op> rhs`.
-As we can see here, both `lhs` and `rhs` is needed to form
-these expressions.
-However, to know which kind of expression (`+`, `-`, or `*`)
-we must parse until `<op>` token, which means we must have seen
-`lhs` along the way.
-The <span style="color:red">red</span> part below indicates what we have seen
-at this point:
+Below is our template, we need to determine how to get `lhs`, `<op>`, and `rhs`.
 
-import tdop_binary_add_lhs_rhs from "../assets/tdop-binary-add-lhs-rhs.png";
-
-<Image
-  src={tdop_binary_add_lhs_rhs}
-  alt="The parser has seen `lhs +` at this point"
-  class="mx-auto"
-/>
-
-For the known `lhs`, we can just pass it as a function parameter:
-
-```rust
-// [!code word:lhs\: Expr]
-fn binary(tokenizer: &mut Tokenizer, lhs: Expr) -> Expr {
-  // ...
+```rust {2-4}
+fn binary(...) -> Expr {
+  let lhs = todo!("how to get lhs");
+  let op = todo!("how to get op");
+  let rhs = todo!("how to get rhs");
+  match op {
+    Token::Add => Expr::BinaryAdd { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    Token::Sub => Expr::BinarySub { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    Token::Mul => Expr::BinaryMul { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    _ => panic!("bad op {:?}", op),
+  }
 }
 ```
 
-For the unknown `rhs`, we simply reuse the `expr` to parse it and pass
-it to the expression constructions.
+Our implementation might be different depending on how many tokens
+we have consumed. Let's look at different options based on
+the tokenizer position (represented as `|`).
 
-```rust {3,5-7}
+- `lhs <op> rhs |`: everything has been consumed, our `binary` is
+  just a no-brainer wrapper around `Expr::Binary`.
+  Since it isn't a very helpful option, we exclude this.
+
+  ```rust {1}
+  fn binary(lhs: Expr, op: Token, rhs: Expr) -> Expr {
+    match op {
+    // ...
+  }
+  ```
+
+- `lhs <op> | rhs`: `lhs` and `<op>` have been consumed,
+  we need to parse `rhs`, this can be done using `expr`.
+
+  ```rust {1,2}
+  fn binary(tokenizer: &mut Tokenizer, lhs: Expr, op: Token) -> Expr {
+    let rhs = expr(tokenizer);
+    match op {
+    // ...
+  }
+  ```
+
+- `lhs | <op> rhs`: we need to parse both `op` and `rhs`.
+
+  ```rust {1-3}
+  fn binary(tokenizer: &mut Tokenizer, lhs: Expr) -> Expr {
+    let op = tokenizer.next().unwrap();
+    let rhs = expr(tokenizer);
+    match op {
+    // ...
+  }
+  ```
+
+- `| lhs <op> rhs`: Nothing has been consumed,
+  this is similar to [literal expression](#literal-expression).
+  The question is how do we parse `lhs`?
+  Using `expr` here would lead to infinite recursion;
+  using `literal` would force `lhs` to be `Expr::Literal`,
+  which might not be true. So we rule out this option.
+
+The second option and the third option seems good, let's go with
+the third one (`lhs | <op> rhs`) because we want `binary` to do as much as it can.
+
+```rust
 fn binary(tokenizer: &mut Tokenizer, lhs: Expr) -> Expr {
   let op = tokenizer.next().expect("missing op for binary expression");
   let rhs = expr(tokenizer);
@@ -285,12 +365,11 @@ fn binary(tokenizer: &mut Tokenizer, lhs: Expr) -> Expr {
 }
 ```
 
-Finally, `expr` needs to be modified as well:
-we first parse `lhs`, then the next token
-to determine whether this is a binary expression,
-and finally pass `lhs` to the expression contructor.
+We modify `expr` to apply new `binary`.
+It first parses `lhs` with `literal`,
+then the remaining tokens with `binary` if there are any.
 
-```rust
+```rust {3-6}
 fn expr(tokenizer: &mut Tokenizer) -> Expr {
   let lhs = literal(tokenizer);
   if tokenizer.peek().is_none() {
@@ -300,153 +379,197 @@ fn expr(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-New testcases, they all pass.
+Let's have some new testcases.
 
 ```rust
-  #[test]
-  fn binary_add() {
-    test_parse("1 + 2", "(+ 1 2)", 3)
-  }
+#[test]
+fn binary_add() {
+  test_parse("1 + 2", "(+ 1 2)", 3)
+}
 
-  #[test]
-  fn binary_sub() {
-    test_parse("1 - 2", "(- 1 2)", -1)
-  }
+#[test]
+fn binary_sub() {
+  test_parse("1 - 2", "(- 1 2)", -1)
+}
 
-  #[test]
-  fn binary_mul() {
-    test_parse("2 * 3", "(* 2 3)", 6)
-  }
+#[test]
+fn binary_mul() {
+  test_parse("2 * 3", "(* 2 3)", 6)
+}
 ```
 
 ```text
 running 4 tests
+test test::literal ... ok
 test test::binary_add ... ok
 test test::binary_sub ... ok
 test test::binary_mul ... ok
-test test::literal ... ok
 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
 ### Operator precedence
 
-This implementation has a problem: the parser always parses right-to-left.
-For example, it parses `2 * 3 + 4` as `(* 2 (+ 3 4))`
-(it calculates `3 + 4` first), which is incorrect.
+There is a problem with the current implementation:
+the parser always produces a right-deep tree.
+For example, it parses `1 + 2 * 3 + 4` as `(+ 1 (* 2 (+ 3 4))`,
+(`3 + 4` is calculated before `2 * 3`, which is incorrect).
+*This is [the associativity problem](#associativity-problem)*.
 
-import img_1772256031 from "../assets/tdop-always-parse-right-to-left.png";
+import img_1773980557 from "../assets/tdop_20260320132236.png";
 
 <Image
-  src={img_1772256031}
-  alt="Current implementation always parses right-to-left"
+  src={img_1773980557}
+  alt="Current implementation always parses right-to-left, ignoring associativity"
   class="mx-auto"
 />
 
-To solve this, TDOP parser assigns each operator a binding power,
-and associates (binds) expressions with operator having higher binding power.
-Take the above example, `3` must associate with `*`
-(suppose `+` and `*` have binding powers of `10` and `20`, respectively).
+To solve this, TDOP parser assigns each operator a
+binding power, and associates expressions
+with operator having higher power.
+Take the above example, if we assign `+` and `*`
+binding powers of `10` and `20`,
+then `3` must associate with `*`.
 
-import img_1771762703 from "../assets/tdop-associate-3-with-mul.png";
-
-<Image src={img_1771762703} alt="" class="mx-auto" />
-
-Given an expression: `1 + 2 * 3 + 4`.
-The parsed tree (with binding power assigned) for it should be:
-
-import img_1772257398 from "../assets/tdop-example-final-tree-op.png";
+import img_1773996012 from "../assets/tdop_20260320174010.png";
 
 <Image
-  src={img_1772257398}
+  src={img_1773996012}
+  alt="3 associates with * because * has higher binding power than +"
+  class="mx-auto"
+/>
+
+If we assign binding power to each node of the tree, the correct one should be:
+
+import img_1773980969 from "../assets/tdop_20260320132928.png";
+
+<Image
+  src={img_1773980969}
   alt="Parsed tree for 1 + 2 * 3 + 4"
   class="mx-auto"
 />
 
-Because a child node's operator binds more tightly than its parent's,
-child nodes always have higher binding power.
-Using this observation, the main idea to build the tree is:
+#### How to build the correct tree?
 
-- If an operator has a higher binding power than the current node, attach it as a child.
-- Otherwise, walk up the tree until we find a node with lower binding power, then
-  make the operator the new parent there.
+Look at the tree above, we can see that
+the child nodes always have higher binding
+power than the parent nodes. Why is that?
+Because expressions with higher binding powers
+must always be computed first. In other words,
+they are binded tightly together to the lower part of the tree.
+
+import img_1773981031 from "../assets/tdop_20260320133030.png";
+
+<Image
+  src={img_1773981031}
+  alt="Child node has binding power of 20, when parent node has binding power of 10"
+  class="mx-auto"
+/>
+
+Using this observation,
+the idea to build the correct tree is simple:
+
+- If we encounter an operator with higher binding power than the current node,
+  attach it as a child.
+- Otherwise, walk up to find the ancestor with lower binding power and attach it there.
 
 Let's illustrate this idea by building the parsed tree step-by-step.
 
-At the beginning, there is only one root node with binding power `0`.
+import img_1773996244 from "../assets/tdop_20260320174403.png";
 
-import img_1772257890 from "../assets/tdop-illu-bp-step-0.png";
+- At the beginning, there is only one root node with binding power `0`.
 
-<Image
-  src={img_1772257890}
-  alt="There is only one root node with bp = 0"
-  class="mx-auto"
-/>
-
-Consume the first 2 tokens.
-Bind `1` to `+`'s left, and move to `+`'s right hand side.
+  <Image
+    src={img_1773996244}
+    alt="There is only one root node with bp = 0"
+    class="mx-auto"
+  />
 
 import img_1772258306 from "../assets/tdop_20260228145826.png";
 
-<Image
-  src={img_1772258306}
-  alt="Bind 1 to +'s left and move to +'s right"
-  class="mx-auto"
-/>
+- Consume the first 2 tokens. Associate `1` with `+`,
+  move to `+` right subtree.
 
-Consume the next 2 tokens. Bind `2` to `*` left
-because `*` has higher binding power than the current one (which is `10`),
-and continue to the right subtree of `*`.
+  <Image
+    src={img_1772258306}
+    alt="Associate 1 with +'s left and move to +'s right"
+    class="mx-auto"
+  />
 
 import img_1772258790 from "../assets/tdop_20260228150630.png";
 
-<Image
-  src={img_1772258790}
-  alt="Bind 2 to *'s left and move to *'s right"
-  class="mx-auto"
-/>
+- Consume the next 2 tokens. Associate `2` with `*`
+  (because `*` has higher binding power than `+`),
+  move to `*` right subtree.
 
-Consume the next 2 tokens.
-Bind `3` to `*` right because `+` has lower binding power than `*`.
-What about `+`? It walks back the tree, finds node
-with lower binding power than `10` and binds to its left.
+  <Image
+    src={img_1772258790}
+    alt="Associate 2 with *'s left and move to *'s right"
+    class="mx-auto"
+  />
 
-import img_1772259588 from "../assets/tdop_20260228151947.png";
+import img_1773982055 from "../assets/tdop_20260320134733.png";
 
-<Image
-  src={img_1772259588}
-  alt="Bind 3 to *'s right, replace root child with +'s left"
-  class="mx-auto"
-/>
+- Consume the next 2 tokens. Associate `3` with `*` (because `*` has higher binding power than `+`).
 
-Consume the last token, since
-there is no other operator, bind it
-to `+`'s right.
+  <Image
+    src={img_1773982055}
+    alt="Associate 3 with *'s right"
+    class="mx-auto"
+  />
+
+import img_1773982174 from "../assets/tdop_20260320134933.png";
+
+- What about `+`?
+  We walk back the tree, find the ancestor with lower
+  binding power - which is the root node, create a new child there, then move to its right.
+
+  <Image
+    src={img_1773982174}
+    alt="Replace root child with +'s left"
+    class="mx-auto"
+  />
 
 import img_1772259731 from "../assets/tdop_20260228152211.png";
 
-<Image src={img_1772259731} alt="Bind 4 to +'s right" class="mx-auto" />
+- Consume the last token, since there is no other operator, associate it
+  with `+`.
 
-Let's implement it!
+  <Image src={img_1772259731} alt="Associate 4 to +'s right" class="mx-auto" />
 
-First, we introduce binding power to our parser.
+#### Operator precedence implementation
+
+Okay, now we can apply the binding power idea to our parser.
+We assign binding powers of `10` to `+`, `-`, and `20` to `*`.
 
 ```rust
-fn binding_power(token: &Token) -> u8 {
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct BindingPower(pub u8);
+
+fn binding_power(token: &Token) -> BindingPower {
   match token {
-    Token::Add | Token::Sub => 10,
-    Token::Mul => 20,
+    Token::Add | Token::Sub => BindingPower(10),
+    Token::Mul => BindingPower(20),
     _ => panic!("unsupport binding power for {:?}", token),
   }
 }
 ```
 
-If an operator's binding power is higher than the current node's,
-we take the left-hand side and descend into the right subtree;
-otherwise, we return the left-hand side to the parent.
+Our `expr` should accept power, the indicating the current node's binding power.
+
+```rust
+// [!code word:min_power\: BindingPower]
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
+  // ...
+}
+```
+
+If an operator's binding power is higher than the current
+one, descend to the right subtree, otherwise,
+return the current node to the caller.
 
 ```rust {6-10}
-fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
   let lhs = literal(tokenizer);
   let Some(op) = tokenizer.peek() else {
     return lhs;
@@ -459,17 +582,18 @@ fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
 }
 ```
 
-One thing to note that at the beginning, `min_power` should be `0`,
-indicating all operators with binding power higher than `0` must be parsed.
+At the beginning, the binding power should be `0`,
+representing the root's binding power. This also means we try
+to parse all operators having binding power higher than `0`.
 
 ```rust {3}
 fn parse(program: &str) -> Expr {
   let mut tokenizer = tokenizer(program);
-  expr(&mut tokenizer, 0)
+  expr(&mut tokenizer, BindingPower(0))
 }
 ```
 
-New test failed! It doesn't with `2 * 3 + 4`:
+We add new tests, one of them fails unfortunately.
 
 ```rust {3}
 #[test]
@@ -483,7 +607,7 @@ fn binary_add_mul() {
 }
 ```
 
-```text {3}
+```text {3,4}
 thread 'test::binary_mul_add' (42) panicked at src/main.rs:112:5:
 assertion `left == right` failed
   left: "(* 2 3)"
@@ -491,14 +615,12 @@ assertion `left == right` failed
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
-There was no `+` operator, because its binding power is lower
-than `*`, the `lhs` returned to the parent
-
-The `+` was missing, because its binding power is lower than `*`,
-it was returned directly and the parsing stopped.
+Look at the error: `2 * 3 + 4` is parsed as `(* 2 3)`,
+this is because we return too early without exploring all
+operators with higher binding power.
 
 ```rust {7-9}
-fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
   let lhs = literal(tokenizer);
   let Some(op) = tokenizer.peek() else {
     return lhs;
@@ -511,11 +633,10 @@ fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
 }
 ```
 
-We solve this by introducing a loop,
-iterating through all operators with higher binding power.
+We solve this by adding a loop, iterating through all possible operators.
 
 ```rust {3,12}
-fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
   let mut lhs = literal(tokenizer);
   loop {
     let Some(op) = tokenizer.peek() else {
@@ -531,8 +652,9 @@ fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
 }
 ```
 
-All operator found while iterating must have higher binding power,
-it means it should take `lhs` as its left-hand side.
+Because the accepted operator must have higher binding power,
+they should take `lhs` as their left-hand side and produce
+an expression node.
 
 ```rust {2,11}
 fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
@@ -565,20 +687,25 @@ test test::literal ... ok
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 ```
 
-### Prefix and Infix expressions
+### Prefix and infix expressions
 
-Operators have different meaning based on their posisions.
-For example, `-` can be a minus operator (prefix, as in `-1`),
-or a binary subtraction operator (infix, as in `2 - 1`).
+There is one more issue with our parser: [prefix and infix operators problem](#prefix-and-infix-operators-problem),
+let's fix that.
 
-We see that prefix exeprssion requires only the right-hand side (`<op> rhs`),
-while an infix expression needs both (`lhs <op> rhs`).
-This is exactly what we have done in [literal expression](#literal-expression),
-and [binary expression](#binary-expressions), so let migrate them
-to use prefix and infix concepts
+#### Apply prefix and infix terminology
+
+We have some observations with prefix and infix expressions:
+
+- Prefix expressions only require the right hand side: `<op> rhs`.
+- Infix expressions need both: `lhs <op> rhs`.
+
+But this is exactly what we have done.
+[Literal expression](#literal-expression) is a prefix expression (with no prefix operator),
+and [binary expression](#binary-expressions) is (obviously) an infix expression.
+We can migrate them to use the new terminology.
 
 ```rust
-fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
   let mut lhs = literal(tokenizer); // [!code --]
   let mut lhs = prefix(tokenizer); // [!code ++]
   // ...
@@ -592,19 +719,21 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr { // [!code ++]
   // ...
 }
 
-fn binary(tokenizer: &mut Tokenizer, lhs: Expr, min_power: u8) -> Expr { // [!code --]
-fn infix(tokenizer: &mut Tokenizer, lhs: Expr, min_power: u8) -> Expr { // [!code ++]
+fn binary(tokenizer: &mut Tokenizer, lhs: Expr, min_power: BindingPower) -> Expr { // [!code --]
+fn infix(tokenizer: &mut Tokenizer, lhs: Expr, min_power: BindingPower) -> Expr { // [!code ++]
   // ...
 }
 ```
 
-TDOP parser treats prefix and infix expressions differently for the same operator.
-In other words, if an operator has both prefix and infix forms,
-it must be handled in both `prefix` and `infix` functions.
-For the minus operator, we have done its infix form (for `Expr::BinarySub`),
-so we only need to implement the missing prefix form.
+#### Minus expression
 
-Let's add a minus expression, this is `-`'s prefix form.
+As mentioned earlier, [TDOP parser treats operators as first classes](#tdop-parser),
+which means we must handle the prefix form and the infix form of a token separately.
+
+This is what we will do with the `-` token. Since its infix form
+has already been implemented in `Expr::BinarySub`, we only consider
+its prefix form. Let's add a new `Expr::Minus` (with the form `- <inner>`)
+for that.
 
 ```rust {3,10,18}
 enum Expr {
@@ -629,7 +758,9 @@ fn eval(expr: &Expr) -> i64 {
 }
 ```
 
-We can parse it now.
+Because `Expr::Minus` is a prefix expression, it should be handled
+inside `prefix`. We call the `expr` to get the inner and wrap
+it in `Expr::Minus`.
 
 ```rust {4-7}
 fn prefix(tokenizer: &mut Tokenizer) -> Expr {
@@ -644,9 +775,9 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-New testcases. One of them fails.
+New testcases, and one of them fails.
 
-```rust
+```rust {8}
 #[test]
 fn prefix_minus() {
   test_parse("-2", "-2", -2)
@@ -658,7 +789,7 @@ fn prefix_minus_mul() {
 }
 ```
 
-```text {3}
+```text {3,4}
 thread 'test::prefix_minus_mul' (46) panicked at src/main.rs:122:5:
 assertion `left == right` failed
   left: "-(* 2 3)"
@@ -666,19 +797,22 @@ assertion `left == right` failed
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
-The minus operator must have the highest priority, but the parsed tree
-was `-(* 2 3)`, which means it computed `2 * 3` first.
-This is because we use the same binding power for minus operator.
+The failed test is `-2 * 3`. Look at its parsed tree, `2 * 3` is computed
+before `-2`, meaning `*` operator binds more tightly than minus (`-`) operator.
 
-```rust {3,12}
-fn binding_power(token: &Token) -> u8 {
-  match token {
-    Token::Add | Token::Sub => 10,
-    Token::Mul => 20,
-    _ => panic!("unsupport binding power for {:?}", token),
-  }
-}
+import img_1773985510 from "../assets/tdop_20260320144509.png";
 
+<Image
+  src={img_1773985510}
+  alt="* is computed before minus operator (-)"
+  class="mx-auto"
+/>
+
+This is because we use the same binding power for both
+minus operator and binary sub operator, and all of them
+are less than the `*` operator's.
+
+```rust {4}
 fn prefix(tokenizer: &mut Tokenizer) -> Expr {
   // ...
     Some(Token::Sub) => {
@@ -689,35 +823,34 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-We need separated binding power for both prefix and infix form
-of an operator, since the minus operator has highest binding power,
-let's give it `100`.
+The `binding_power` we have been using so far is, in fact,
+power for the infix operators. Let's change that.
 
-```rust {8}
-fn binding_power(token: &Token) -> u8 { // [!code --]
-fn infix_power(token: &Token) -> u8 { // [!code ++]
+```rust
+fn binding_power(token: &Token) -> BindingPower { // [!code --]
+fn infix_power(token: &Token) -> BindingPower { // [!code ++]
   // ...
 }
 
-fn prefix_power(token: &Token) -> u8 {
-  match token {
-    Token::Sub => 100,
-    _ => panic!("unsupport prefix binding power for {:?}", token),
-  }
+// ...
+
+fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
+  // ...
+    let bp = binding_power(op); // [!code --]
+    let bp = infix_power(op); // [!code ++]
+  // ...
 }
 ```
 
-We apply this change to our expression parser.
+And define a new binding power for prefix operators. The minus
+operator should have the highest priority for now, so we set it `30`.
 
-```rust {3,16}
-fn expr(tokenizer: &mut Tokenizer, min_power: u8) -> Expr {
-  // ...
-    let bp = infix_power(op);
-    if bp <= min_power {
-      break;
-    }
-    lhs = infix(tokenizer, lhs, bp);
-  // ...
+```rust {3,13}
+fn prefix_power(token: &Token) -> BindingPower {
+  match token {
+    Token::Sub => BindingPower(30),
+    _ => panic!("unsupport prefix binding power for {:?}", token),
+  }
 }
 
 // ...
@@ -732,7 +865,7 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-The test should pass.
+The tests should pass.
 
 ```text
 running 8 tests
@@ -748,14 +881,16 @@ test test::prefix_minus ... ok
 test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 ```
 
-Great! We have finished our TDOP parser. Using the same idea, we can add more
-expressions if we want, e.g divide expression, power expression, etc.
-Let's go with the last expression for our parser and see how this
-works out.
+Great! We have our TDOP parser implemented. Using the same idea,
+we can add more expressions if we want,
+i.e. divide expression (`8 / 2`), power expression (`5 ^ 2`), etc.
+However, for simplicity, we can just leave it as is, and go with the
+final one: Parenthesis expression.
 
-### Parenthesis Expression
+### Parenthesis expression
 
-We add new parenthesis expression having the form `( inner )`, e.g. `(1 + 2)`.
+Parenthesis expression has the form `( <inner> )`, i.e. `(1 + 2)`.
+This is a prefix one as we only need the inner expression.
 
 ```rust {3,10,18}
 enum Expr {
@@ -780,37 +915,41 @@ fn eval(expr: &Expr) -> i64 {
 }
 ```
 
-Next, we need to define the binding power, since the
-expression has two operator `(` and `)`, both of them
-must be specified. Some observations:
+Next, we define binding powers for its operator, since the
+expression has two operators `(` and `)`, we specify
+both of them. There are some observations:
 
-- `(`'s binding power should go into `prefix_power` because it only requires the left-hand side.
-- `)`'s binding power should go into `infix_power` because it only requires the right-hand side.
-- `(` and `)` binding power values should be the lowest because we want to parse everything
-  between them.
+- `(` is a prefix operator.
+- `)` is an infix operator.
+- `(` and `)` should have the lowest binding power,
+  we want everything inside it should be
+  parsed first.
 
-```rust {5,13}
-fn infix_power(token: &Token) -> u8 {
+```rust {4,13}
+fn prefix_power(token: &Token) -> BindingPower {
   match token {
-    Token::Add | Token::Sub => 10,
-    Token::Mul => 20,
-    Token::RParen => 1,
+    Token::Sub => BindingPower(30),
+    Token::LParen => BindingPower(1),
+    _ => panic!("unsupport prefix binding power for {:?}", token),
+  }
+}
+
+fn infix_power(token: &Token) -> BindingPower {
+  match token {
+    Token::Add | Token::Sub => BindingPower(10),
+    Token::Mul => BindingPower(20),
+    Token::RParen => BindingPower(1),
     _ => panic!("unsupport infix binding power for {:?}", token),
   }
 }
 
-fn prefix_power(token: &Token) -> u8 {
-  match token {
-    Token::Sub => 100,
-    Token::LParen => 1,
-    _ => panic!("unsupport prefix binding power for {:?}", token),
-  }
-}
 ```
 
-Parenthesis expression is a prefix expression, we define them in `prefix`:
+Similar to [minus expression](#minus-expression), this is defined
+inside `prefix`. After getting the inner expression using `expr`,
+we must also consume the `)` token.
 
-```rust
+```rust {5-10}
 fn prefix(tokenizer: &mut Tokenizer) -> Expr {
   match tokenizer.next() {
     // ...
@@ -827,7 +966,7 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
-New testcases, they all pass.
+New testcases, and they all pass.
 
 ```rust
 #[test]
@@ -857,4 +996,14 @@ test test::prefix_minus ... ok
 test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 ```
 
-[^1]: aa
+## Conclusion
+
+The TDOP parser, at first glance, might seem to be complicated,
+I read [the original paper](https://tdop.github.io/) a few times,
+and couldn't fully understand it. But once you grasp the idea,
+it is elegant, easy to implement, and quite [performant](https://web.archive.org/web/20080722032411/http://effbot.org/zone/simple-top-down-parsing.htm#performance).
+
+Almost all the idea of this post comes from the very well written
+tutorials from [this index post](https://www.oilshell.org/blog/2017/03/31.html).
+I had a very fun time playing with this algorithm, all the code can be found
+[in my repo](https://github.com/dqkqd/code_for_blog/tree/main/tdop).

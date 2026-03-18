@@ -34,7 +34,7 @@ code .line::before {
 }
 
 .prose code .line.diff.add {
-  @apply bg-green-200/40;
+  @apply bg-green-200/80;
 }
 
 .prose :not(pre) > code {
