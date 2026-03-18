@@ -7,7 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "format": "prettier . --write",
+    "format": "prettier . --write && markdownlint-cli2 \"**/*.mdx\" --fix",
     "lint": "eslint . && stylelint \"**/*.{css,vue}\"",
     "lint::fix": "eslint . --fix && stylelint \"**/*.{css,vue}\" --fix"
   },
@@ -31,6 +31,7 @@
     "eslint-plugin-astro": "^1.6.0",
     "eslint-plugin-vue": "^10.8.0",
     "globals": "^17.3.0",
+    "markdownlint-cli2": "^0.21.0",
     "postcss-html": "^1.8.1",
     "prettier": "3.8.1",
     "prettier-plugin-astro": "0.14.1",
