@@ -18,35 +18,26 @@ const { title, nextBlog, prevBlog } = Astro.props;
     <slot />
   </main>
 
-  <footer class="mt-16 border-t border-zinc-200 dark:border-zinc-800">
+  <footer class="mt-16 border-t border-zinc-200">
     <div
       class="mx-auto flex max-w-prose items-center justify-between gap-4 px-4 py-8 text-sm sm:px-6"
     >
       <div class="flex-1">
         {
           prevBlog && (
-            <a
-              href={prevBlog.href}
-              class="group flex flex-col text-zinc-500 no-underline transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              <span class="mb-1 text-xs tracking-wide uppercase">
-                ← Previous
-              </span>
-              <span class="group-hover:underline">{prevBlog.data.title}</span>
+            <a href={prevBlog.href} class="link group flex flex-col">
+              <span class="mb-1 text-lg tracking-wide">← Previous</span>
+              <span>{prevBlog.data.title}</span>
             </a>
           )
         }
       </div>
-
       <div class="flex-1 text-right">
         {
           nextBlog && (
-            <a
-              href={nextBlog.href}
-              class="group flex flex-col items-end text-zinc-500 no-underline transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              <span class="mb-1 text-xs tracking-wide uppercase">Next →</span>
-              <span class="group-hover:underline">{nextBlog.data.title}</span>
+            <a href={nextBlog.href} class="link group flex flex-col items-end">
+              <span class="mb-1 text-lg tracking-wide">Next →</span>
+              <span>{nextBlog.data.title}</span>
             </a>
           )
         }

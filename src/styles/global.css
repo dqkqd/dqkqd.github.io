@@ -50,3 +50,9 @@ code .line::before {
 .prose :not(pre) > code::after {
   content: none;
 }
+
+@layer components {
+  .link {
+    @apply text-lg underline decoration-zinc-400/50 decoration-dotted transition hover:text-zinc-900 hover:decoration-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-100;
+  }
+}
