@@ -16,6 +16,7 @@ cat >"$FILE" <<EOF
 title: TODO
 description: TODO
 pubDatetime: $DATETIME
+tags: []
 ---
 EOF
 
