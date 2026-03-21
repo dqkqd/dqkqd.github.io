@@ -5,18 +5,19 @@ import type { BlogEntry } from "../lib/blog";
 
 interface Props {
   title: string;
+  description: string;
   nextBlog: BlogEntry | undefined;
   prevBlog: BlogEntry | undefined;
 }
 
-const { title, nextBlog, prevBlog } = Astro.props;
+const { title, description, nextBlog, prevBlog } = Astro.props;
 ---
 
-<BaseLayout title={title}>
-  <main class="prose prose-lg mx-auto px-4 sm:px-6">
+<BaseLayout title={title} description={description}>
+  <article class="prose prose-lg mx-auto px-4 sm:px-6">
     <h1>{title}</h1>
     <slot />
-  </main>
+  </article>
 
   <footer class="mt-16 border-t border-zinc-200">
     <div

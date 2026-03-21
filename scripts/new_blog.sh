@@ -13,7 +13,8 @@ DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%S%z")
 
 cat >"$FILE" <<EOF
 ---
-title:
+title: TODO
+description: TODO
 pubDatetime: $DATETIME
 ---
 EOF

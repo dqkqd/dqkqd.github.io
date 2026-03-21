@@ -1,6 +1,6 @@
 ---
 import { render } from "astro:content";
-import Blog from "../../layouts/BlogLayout.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
 import { getStaticBlogs, type BlogEntry } from "../../lib/blog.ts";
 
 export async function getStaticPaths() {
@@ -17,6 +17,6 @@ const { blog, nextBlog, prevBlog } = Astro.props;
 const { Content } = await render(blog);
 ---
 
-<Blog {...blog.data} nextBlog={nextBlog} prevBlog={prevBlog}>
+<BlogLayout {...blog.data} nextBlog={nextBlog} prevBlog={prevBlog}>
   <Content />
-</Blog>
+</BlogLayout>
