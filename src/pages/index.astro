@@ -8,10 +8,8 @@ const blogs = await getSortedBlogs();
 ---
 
 <BaseLayout>
-  <main class="px-4">
-    <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
-    <div class="space-y-4">
-      {blogs.map((blog) => <BlogCard {...blog.data} href={blog.href} />)}
-    </div>
-  </main>
+  <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
+  <div class="space-y-4">
+    {blogs.map((blog) => <BlogCard {...blog.data} href={blog.href} />)}
+  </div>
 </BaseLayout>
