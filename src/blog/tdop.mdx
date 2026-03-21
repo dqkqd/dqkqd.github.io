@@ -77,8 +77,8 @@ In arithmetic expressions, tokens have
 different meanings based on their position.
 For example, `-` can be interpreted as:
 
-- Negative operator in `-1 + 2`.
-- Binary sub operator in `1 - 2`.
+- Minus operator (prefix operator) in `-1`.
+- Subtraction operator (infix operator) in `1 - 2`.
 
 The parser must distinguish which operator to apply based on the context,
 not from the token itself.
@@ -118,8 +118,10 @@ enum Token {
 We don't need a perfect tokenizer (our goal isn't writing one anyway),
 just a simple regex that can parse all of the
 above tokens is enough: `[0-9]+|[+\-*()]`.
-It also needs to support `next` and `peek` operations,
-we use [Peekable\<Iterator\>](https://doc.rust-lang.org/std/iter/struct.Peekable.html).
+It also needs to support querying the next token (`next` method)
+and looking ahead without consuming (`peek` method),
+we use [Peekable\<Iterator\>](https://doc.rust-lang.org/std/iter/struct.Peekable.html)
+to accommodate that.
 
 ```rust {3,6,21}
 use regex::Regex;
@@ -164,10 +166,6 @@ internal nodes are expressions.
 
 To represent this tree, an enum with different
 types of nodes is a perfect fit.
-To debug the parse tree, our expressions need to be printable
-and evaluable. For printing, we implement `Display`
-using [Polish Notation](https://en.wikipedia.org/wiki/Polish_notation),
-for evaluating, a simple recursive walk should work just fine.
 
 ```rust
 use std::fmt;
@@ -178,41 +176,57 @@ enum Expr {
   BinarySub { lhs: Box<Expr>, rhs: Box<Expr> }, // lhs - rhs
   BinaryMul { lhs: Box<Expr>, rhs: Box<Expr> }, // lhs * rhs
 }
+```
 
-impl fmt::Display for Expr {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Expr::Literal(value) => write!(f, "{}", value),
-      Expr::BinaryAdd { lhs, rhs } => write!(f, "(+ {lhs} {rhs})"),
-      Expr::BinarySub { lhs, rhs } => write!(f, "(- {lhs} {rhs})"),
-      Expr::BinaryMul { lhs, rhs } => write!(f, "(* {lhs} {rhs})"),
+To debug the parse tree, our expressions need to be printable
+and evaluable.
+
+- For printing, we implement `Display`
+  using [Polish Notation](https://en.wikipedia.org/wiki/Polish_notation).
+
+  ```rust
+  impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+      match self {
+        Expr::Literal(value) => write!(f, "{}", value),
+        Expr::BinaryAdd { lhs, rhs } => write!(f, "(+ {lhs} {rhs})"),
+        Expr::BinarySub { lhs, rhs } => write!(f, "(- {lhs} {rhs})"),
+        Expr::BinaryMul { lhs, rhs } => write!(f, "(* {lhs} {rhs})"),
+      }
     }
   }
-}
+  ```
 
-fn eval(expr: &Expr) -> i64 {
-  match expr {
-    Expr::Literal(value) => *value as i64,
-    Expr::BinaryAdd { lhs, rhs } => eval(lhs) + eval(rhs),
-    Expr::BinarySub { lhs, rhs } => eval(lhs) - eval(rhs),
-    Expr::BinaryMul { lhs, rhs } => eval(lhs) * eval(rhs),
+- For evaluating, a simple recursive walk should work just fine.
+
+  ```rust
+  fn eval(expr: &Expr) -> i64 {
+    match expr {
+      Expr::Literal(value) => *value as i64,
+      Expr::BinaryAdd { lhs, rhs } => eval(lhs) + eval(rhs),
+      Expr::BinarySub { lhs, rhs } => eval(lhs) - eval(rhs),
+      Expr::BinaryMul { lhs, rhs } => eval(lhs) * eval(rhs),
+    }
   }
-}
-```
+  ```
 
-The parse tree for `1 + (2 * 3)` can be constructed like this.
+The parse tree for `1 + (2 * 3)`, we can see that:
 
-```rust
-BinaryAdd {
-    lhs: Literal(1),
-    rhs: BinaryMul {
-        lhs: Literal(2),
-        rhs: Literal(3),
-    },
-}
-```
+- Parse tree:
 
-Its polish notation is: `(+ 1 (* 2 3))`, and it is evaluated as `7`.
+  ```rust
+  BinaryAdd {
+      lhs: Literal(1),
+      rhs: BinaryMul {
+          lhs: Literal(2),
+          rhs: Literal(3),
+      },
+  }
+  ```
+
+- Polish notation: `(+ 1 (* 2 3))`
+
+- Evaluation: `7`
 
 #### Parser entrypoint
 
@@ -312,8 +326,8 @@ we have consumed. Let's look at different options based on
 the tokenizer position (represented as `|`).
 
 - `lhs <op> rhs |`: everything has been consumed, our `binary` is
-  just a no-brainer wrapper around `Expr::Binary`.
-  Since it isn't a very helpful option, we exclude this.
+  just a no-brainer wrapper around `Expr::Binary`. This isn't a very helpful
+  option.
 
   ```rust {1}
   fn binary(lhs: Expr, op: Token, rhs: Expr) -> Expr {
@@ -333,7 +347,7 @@ the tokenizer position (represented as `|`).
   }
   ```
 
-- `lhs | <op> rhs`: we need to parse both `op` and `rhs`.
+- `lhs | <op> rhs`: we need to parse both `<op>` and `rhs`.
 
   ```rust {1-3}
   fn binary(tokenizer: &mut Tokenizer, lhs: Expr) -> Expr {
@@ -345,13 +359,14 @@ the tokenizer position (represented as `|`).
   ```
 
 - `| lhs <op> rhs`: Nothing has been consumed,
-  this is similar to [literal expression](#literal-expression).
-  The question is how do we parse `lhs`?
-  Using `expr` here would lead to infinite recursion;
-  using `literal` would force `lhs` to be `Expr::Literal`,
-  which might not be true. So we rule out this option.
+  this is similar to [literal expression](#literal-expression), we
+  have to parse everything. `<op>` and `rhs` are the easy ones,
+  the question is how do we parse `lhs`?
+  Using `expr` here would lead to an infinite recursion;
+  using `literal` would force `lhs` to always be `Expr::Literal`,
+  which might not be true in all case.
 
-The second option and the third option seem good.
+The second and third options are viable options for us.
 We go with the third one (`lhs | <op> rhs`),
 this forces `binary` to do as much as it can,
 abstracting away `<op>` parsing from the caller.
@@ -658,7 +673,7 @@ fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
 
 Because the accepted operator must have higher binding power,
 they should take `lhs` as their left-hand side and produce
-an expression node.
+a `Expr::Binary` node.
 
 ```rust {2,11}
 fn expr(tokenizer: &mut Tokenizer, min_power: BindingPower) -> Expr {
@@ -691,21 +706,21 @@ test test::literal ... ok
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 ```
 
-### Prefix and infix expressions
+### Prefix and infix operators
 
 There is one more issue with our parser: [prefix and infix operators problem](#prefix-and-infix-operators-problem),
 let's fix that.
 
 #### Apply prefix and infix terminology
 
-We have some observations with prefix and infix expressions:
+We have some observations with prefix and infix forms:
 
-- Prefix expressions only require the right hand side: `<op> rhs`.
-- Infix expressions need both: `lhs <op> rhs`.
+- Prefix operators only require the right hand side: `<op> rhs`.
+- Infix operators need both: `lhs <op> rhs`.
 
 But this is exactly what we have done.
-[Literal expression](#literal-expression) is a prefix expression (with no prefix operator),
-and [binary expression](#binary-expressions) is (obviously) an infix expression.
+[Literal expression](#literal-expression) has prefix form (with no prefix operator),
+and [binary expression](#binary-expressions) has (obviously) infix form.
 We can migrate them to use the new terminology.
 
 ```rust
@@ -762,8 +777,8 @@ fn eval(expr: &Expr) -> i64 {
 }
 ```
 
-Because `Expr::Minus` is a prefix expression, it should be handled
-inside `prefix`. We call `expr` to get the inner and wrap
+Because `Expr::Minus` has prefix form, it should be handled
+inside `prefix`. We call `expr` to get the inner expression and wrap
 it in `Expr::Minus`.
 
 ```rust {4-7}
@@ -827,8 +842,9 @@ fn prefix(tokenizer: &mut Tokenizer) -> Expr {
 }
 ```
 
+We need to separate binding power for prefix and infix operators.
 The `binding_power` we have been using so far is, in fact,
-power for the infix operators. Let's change that.
+the binding power for infix operators. Let's change that.
 
 ```rust
 fn binding_power(token: &Token) -> BindingPower { // [!code --]
@@ -886,16 +902,10 @@ test test::prefix_minus ... ok
 test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 ```
 
-Great! We have our TDOP parser implemented. Using the same idea,
-we can add more expressions if we want,
-i.e. divide expression (`8 / 2`), power expression (`5 ^ 2`), etc.
-However, for simplicity, we can just leave it as is, and go with the
-final one: Parentheses expression.
-
 ### Parentheses expression
 
-Parentheses expression has the form `( <inner> )`, i.e. `(1 + 2)`.
-And it is a prefix expression as we only need the inner expression.
+Let's go with the final one: Parentheses expressions having the form
+`( <inner> )`, i.e. `(1 + 2)`.
 
 ```rust {3,10,18}
 enum Expr {
@@ -946,7 +956,6 @@ fn infix_power(token: &Token) -> BindingPower {
     _ => panic!("unsupported infix binding power for {:?}", token),
   }
 }
-
 ```
 
 Similar to [the minus expression](#minus-expression), this is defined
@@ -1012,10 +1021,14 @@ test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 ## Conclusion
 
-The TDOP parser, at first glance, might seem to be complicated,
-I read [the original paper](https://tdop.github.io/) a few times,
-and couldn't fully understand it. But once you grasp the idea,
-it is elegant, easy to implement, and quite [performant](https://web.archive.org/web/20080722032411/http://effbot.org/zone/simple-top-down-parsing.htm#performance).
+We have our TDOP parser implemented. Using the same idea,
+we can add more expressions,
+i.e. divide expression (`8 / 2`), power expression (`5 ^ 2`), etc.
+
+The TDOP parser, at first glance, might seem to be complicated
+(I still don't fully understand [its original paper](https://tdop.github.io/)).
+However, once we grasp the idea, it is elegant, easy to implement,
+and quite [performant](https://web.archive.org/web/20080722032411/http://effbot.org/zone/simple-top-down-parsing.htm#performance).
 
 Most of the ideas in this post come from the very well-written
 tutorials from [this index post](https://www.oilshell.org/blog/2017/03/31.html).
