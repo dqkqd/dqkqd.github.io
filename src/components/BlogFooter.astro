@@ -1,0 +1,36 @@
+---
+import type { BlogEntry } from "../lib/blog";
+
+interface Props {
+  nextBlog: BlogEntry | undefined;
+  prevBlog: BlogEntry | undefined;
+}
+const { nextBlog, prevBlog } = Astro.props;
+---
+
+<footer class="mt-16 border-t border-zinc-200">
+  <div
+    class="mx-auto flex max-w-prose items-center justify-between gap-4 px-4 py-8 text-sm sm:px-6"
+  >
+    <div class="flex-1">
+      {
+        prevBlog && (
+          <a href={prevBlog.href} class="link group flex flex-col">
+            <span class="mb-1 text-lg tracking-wide">← Previous</span>
+            <span>{prevBlog.data.title}</span>
+          </a>
+        )
+      }
+    </div>
+    <div class="flex-1 text-right">
+      {
+        nextBlog && (
+          <a href={nextBlog.href} class="link group flex flex-col items-end">
+            <span class="mb-1 text-lg tracking-wide">Next →</span>
+            <span>{nextBlog.data.title}</span>
+          </a>
+        )
+      }
+    </div>
+  </div>
+</footer>

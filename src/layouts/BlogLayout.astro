@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import BaseLayout from "./BaseLayout.astro";
+import BlogFooter from "../components/BlogFooter.astro";
 import type { BlogEntry } from "../lib/blog";
 
 interface Props {
@@ -18,31 +19,5 @@ const { title, description, nextBlog, prevBlog } = Astro.props;
     <h1>{title}</h1>
     <slot />
   </article>
-
-  <footer class="mt-16 border-t border-zinc-200">
-    <div
-      class="mx-auto flex max-w-prose items-center justify-between gap-4 px-4 py-8 text-sm sm:px-6"
-    >
-      <div class="flex-1">
-        {
-          prevBlog && (
-            <a href={prevBlog.href} class="link group flex flex-col">
-              <span class="mb-1 text-lg tracking-wide">← Previous</span>
-              <span>{prevBlog.data.title}</span>
-            </a>
-          )
-        }
-      </div>
-      <div class="flex-1 text-right">
-        {
-          nextBlog && (
-            <a href={nextBlog.href} class="link group flex flex-col items-end">
-              <span class="mb-1 text-lg tracking-wide">Next →</span>
-              <span>{nextBlog.data.title}</span>
-            </a>
-          )
-        }
-      </div>
-    </div>
-  </footer>
+  <BlogFooter nextBlog={nextBlog} prevBlog={prevBlog} />
 </BaseLayout>
