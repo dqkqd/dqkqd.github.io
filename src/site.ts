@@ -1,3 +1,3 @@
 export const SITE = {
-  name: "Khanh Duong",
+  name: "Khanh",
 };
