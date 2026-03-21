@@ -1,0 +1,13 @@
+---
+import type { BlogEntry } from "../lib/blog";
+import BlogCard from "./BlogCard.astro";
+
+interface Props {
+  blogs: BlogEntry[];
+}
+const { blogs } = Astro.props;
+---
+
+<div class="mt-4 space-y-4">
+  {blogs.map((blog) => <BlogCard {...blog.data} href={blog.href} />)}
+</div>

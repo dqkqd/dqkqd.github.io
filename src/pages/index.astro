@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import BlogCard from "../components/BlogCard.astro";
+import BlogCards from "../components/BlogCards.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { getSortedBlogs } from "../lib/blog.ts";
 
@@ -8,8 +8,6 @@ const blogs = await getSortedBlogs();
 ---
 
 <BaseLayout>
-  <h1 class="mb-4 text-xl font-bold">Recent posts</h1>
-  <div class="space-y-4">
-    {blogs.map((blog) => <BlogCard {...blog.data} href={blog.href} />)}
-  </div>
+  <h1 class="text-xl font-bold">Recent posts</h1>
+  <BlogCards blogs={blogs} />
 </BaseLayout>

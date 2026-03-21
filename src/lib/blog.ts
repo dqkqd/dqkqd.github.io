@@ -22,3 +22,18 @@ export async function getStaticBlogs() {
     },
   }));
 }
+
+export async function getStaticBlogTags() {
+  const blogs = await getSortedBlogs();
+  const tags = [...new Set(blogs.flatMap((blog) => blog.data.tags))];
+  return tags.map((tag) => ({
+    params: { tag },
+    props: {
+      blogs: blogs
+        .filter((blog) => blog.data.tags.includes(tag))
+        .sort(
+          (a, b) => b.data.pubDatetime.valueOf() - a.data.pubDatetime.valueOf(),
+        ),
+    },
+  }));
+}

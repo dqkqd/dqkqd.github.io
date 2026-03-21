@@ -1,0 +1,19 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import BlogCards from "../../components/BlogCards.astro";
+import { getStaticBlogTags } from "../../lib/blog";
+
+export async function getStaticPaths() {
+  return await getStaticBlogTags();
+}
+
+const { tag } = Astro.params;
+const { blogs } = Astro.props;
+---
+
+<BaseLayout title={`Tag: ${tag}`}>
+  <h1 class="text-xl">
+    Posts with tag <span class="bg-zinc-100 font-mono">#{tag}</span>
+  </h1>
+  <BlogCards blogs={blogs} />
+</BaseLayout>
