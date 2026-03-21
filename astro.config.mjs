@@ -12,6 +12,8 @@ import {
 import vue from "@astrojs/vue";
 // https://astro.build/config
 export default defineConfig({
+  site: "https://dqkqd.github.io",
+
   integrations: [mdx(), vue()],
 
   vite: {
