@@ -5,7 +5,7 @@ pubDatetime: 2026-02-16T07:35:25+0000
 tags: ["parsing", "rust"]
 ---
 
-import { Image } from "astro:assets";
+import CenteredImage from "../components/CenteredImage.astro";
 
 Top down operator precedence (TDOP) is
 a simple yet powerful algorithm for parsing
@@ -27,9 +27,10 @@ for example, when a parser sees `print`, it knows the
 expression might be `print(<something>)`, and applies
 that pattern to create a parse tree.
 
-import tdop_parser_background from "../assets/tdop-parser-background.png";
-
-<Image src={tdop_parser_background} alt="Parsing flows" class="mx-auto" />
+<CenteredImage
+  src="/src/assets/tdop-parser-background.png"
+  alt="Parsing flows"
+/>
 
 We can parse `print("Hello World")` like this, just walk straight
 from left to right, consuming tokens as we move forward.
@@ -56,19 +57,17 @@ there are two main reasons.
 When a parser sees `2` in `1 + 2 * 3`, it must determine which operator `2` is associated with.
 From our perspective, we know it must be `*`, which gives us this tree.
 
-import img_1773919071 from "../assets/tdop_20260319201749.png";
-
-<Image src={img_1773919071} alt="Parse tree for 1 + (2 * 3)" class="mx-auto" />
+<CenteredImage
+  src="/src/assets/tdop_20260319201749.png"
+  alt="Parse tree for 1 + (2 * 3)"
+/>
 
 But our parser doesn't know about this, it sees `+` and `*` as simply tokens.
 and since it consumes tokens left-to-right, it hasn't seen `*` yet when it reaches `2`.
 
-import img_1773919322 from "../assets/tdop_20260319202201.png";
-
-<Image
-  src={img_1773919322}
+<CenteredImage
+  src="/src/assets/tdop_20260319202201.png"
   alt="The parser hasn't seen * when it reaches 2"
-  class="mx-auto"
 />
 
 ### **Prefix and infix operators problem**
@@ -162,7 +161,10 @@ Recall from [the tree earlier](#associativity-problem),
 its leaf nodes are just literal numbers, while its
 internal nodes are expressions.
 
-<Image src={img_1773919071} alt="Parse tree for 1 + (2 * 3)" class="mx-auto" />
+<CenteredImage
+  src="/src/assets/tdop_20260319201749.png"
+  alt="Parse tree for 1 + (2 * 3)"
+/>
 
 To represent this tree, an enum with different
 types of nodes is a perfect fit.
@@ -435,10 +437,8 @@ the parser always produces a right-deep tree, causing
 For example, it parses `1 + 2 * 3 + 4` as `(+ 1 (* 2 (+ 3 4)))`,
 which is incorrect because `3 + 4` is calculated before `2 * 3`.
 
-import img_1773980557 from "../assets/tdop_20260320132236.png";
-
-<Image
-  src={img_1773980557}
+<CenteredImage
+  src="/src/assets/tdop_20260320132236.png"
   alt="Current implementation always parses right-to-left, ignoring associativity"
   class="mx-auto"
 />
@@ -450,22 +450,17 @@ Take the above example: if we assign `+` and `*`
 binding powers of `10` and `20`,
 then `3` must associate with `*`.
 
-import img_1773996012 from "../assets/tdop_20260320174010.png";
-
-<Image
-  src={img_1773996012}
+<CenteredImage
+  src="/src/assets/tdop_20260320174010.png"
   alt="3 associates with * because * has higher binding power than +"
   class="mx-auto"
 />
 
 The correct tree with binding power assigned to each operator should be:
 
-import img_1773980969 from "../assets/tdop_20260320132928.png";
-
-<Image
-  src={img_1773980969}
+<CenteredImage
+  src="/src/assets/tdop_20260320132928.png"
   alt="Parse tree for 1 + 2 * 3 + 4"
-  class="mx-auto"
 />
 
 #### Building a correct tree
@@ -477,12 +472,9 @@ Because expressions with higher binding powers
 must always be computed first. In other words,
 they are *binded* tightly together to the lower part of the tree.
 
-import img_1773981031 from "../assets/tdop_20260320133030.png";
-
-<Image
-  src={img_1773981031}
+<CenteredImage
+  src="/src/assets/tdop_20260320133030.png"
   alt="Child node has binding power of 20, when parent node has binding power of 10"
-  class="mx-auto"
 />
 
 Using this observation,
@@ -494,67 +486,53 @@ the idea to build a tree is simple:
 
 Let's illustrate this idea by building the parse tree step-by-step.
 
-import img_1773996244 from "../assets/tdop_20260320174403.png";
-
 - At the beginning, there is only one root node with binding power `0`.
 
-  <Image
-    src={img_1773996244}
+  <CenteredImage
+    src="/src/assets/tdop_20260320174403.png"
     alt="There is only one root node with bp = 0"
-    class="mx-auto"
   />
-
-import img_1772258306 from "../assets/tdop_20260228145826.png";
 
 - Consume the first 2 tokens. Associate `1` with `+`,
   move to `+` right subtree.
 
-  <Image
-    src={img_1772258306}
+  <CenteredImage
+    src="/src/assets/tdop_20260228145826.png"
     alt="Associate 1 with +'s left and move to +'s right"
-    class="mx-auto"
   />
-
-import img_1772258790 from "../assets/tdop_20260228150630.png";
 
 - Consume the next 2 tokens. Associate `2` with `*`
   (because `*` has higher binding power than `+`),
   move to `*` right subtree.
 
-  <Image
-    src={img_1772258790}
+  <CenteredImage
+    src="/src/assets/tdop_20260228150630.png"
     alt="Associate 2 with *'s left and move to *'s right"
-    class="mx-auto"
   />
-
-import img_1773982055 from "../assets/tdop_20260320134733.png";
 
 - Consume the next 2 tokens. Associate `3` with `*` (because `*` has higher binding power than `+`).
 
-  <Image
-    src={img_1773982055}
+  <CenteredImage
+    src="/src/assets/tdop_20260320134733.png"
     alt="Associate 3 with *'s right"
-    class="mx-auto"
   />
-
-import img_1773982174 from "../assets/tdop_20260320134933.png";
 
 - What about `+`?
   We walk back the tree, find the ancestor with lower
   binding power - which is the root node, create a new child there, then move to its right.
 
-  <Image
-    src={img_1773982174}
+  <CenteredImage
+    src="/src/assets/tdop_20260320134933.png"
     alt="Replace root child with +'s left"
-    class="mx-auto"
   />
-
-import img_1772259731 from "../assets/tdop_20260228152211.png";
 
 - Consume the last token, since there is no other operator, associate it
   with `+`.
 
-  <Image src={img_1772259731} alt="Associate 4 to +'s right" class="mx-auto" />
+  <CenteredImage
+    src="/src/assets/tdop_20260228152211.png"
+    alt="Associate 4 to +'s right"
+  />
 
 #### Implement operator precedence
 
@@ -819,12 +797,9 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 The failed test is `-2 * 3`. Look at its parse tree, `2 * 3` is computed
 before `-2`, meaning `*` operator binds more tightly than minus (`-`) operator.
 
-import img_1773985510 from "../assets/tdop_20260320144509.png";
-
-<Image
-  src={img_1773985510}
+<CenteredImage
+  src="/src/assets/tdop_20260320144509.png"
   alt="* is computed before minus operator (-)"
-  class="mx-auto"
 />
 
 This is because we use the same binding power for both
