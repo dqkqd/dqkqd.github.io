@@ -3,11 +3,12 @@ import type { ImageMetadata } from "astro";
 import { Image } from "astro:assets";
 
 interface Props {
-  src: string;
+  name: string;
   alt: string;
 }
 
-const { src, alt } = Astro.props;
+const { name, alt } = Astro.props;
+const src = `/src/assets/${name}`;
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/*.{jpeg,jpg,png,gif}",
 );

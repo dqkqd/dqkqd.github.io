@@ -27,10 +27,7 @@ for example, when a parser sees `print`, it knows the
 expression might be `print(<something>)`, and applies
 that pattern to create a parse tree.
 
-<CenteredImage
-  src="/src/assets/tdop-parser-background.png"
-  alt="Parsing flows"
-/>
+<CenteredImage name="tdop-parser-background.png" alt="Parsing flows" />
 
 We can parse `print("Hello World")` like this, just walk straight
 from left to right, consuming tokens as we move forward.
@@ -58,7 +55,7 @@ When a parser sees `2` in `1 + 2 * 3`, it must determine which operator `2` is a
 From our perspective, we know it must be `*`, which gives us this tree.
 
 <CenteredImage
-  src="/src/assets/tdop_20260319201749.png"
+  name="tdop_20260319201749.png"
   alt="Parse tree for 1 + (2 * 3)"
 />
 
@@ -66,7 +63,7 @@ But our parser doesn't know about this, it sees `+` and `*` as simply tokens.
 and since it consumes tokens left-to-right, it hasn't seen `*` yet when it reaches `2`.
 
 <CenteredImage
-  src="/src/assets/tdop_20260319202201.png"
+  name="tdop_20260319202201.png"
   alt="The parser hasn't seen * when it reaches 2"
 />
 
@@ -162,7 +159,7 @@ its leaf nodes are just literal numbers, while its
 internal nodes are expressions.
 
 <CenteredImage
-  src="/src/assets/tdop_20260319201749.png"
+  name="tdop_20260319201749.png"
   alt="Parse tree for 1 + (2 * 3)"
 />
 
@@ -438,9 +435,8 @@ For example, it parses `1 + 2 * 3 + 4` as `(+ 1 (* 2 (+ 3 4)))`,
 which is incorrect because `3 + 4` is calculated before `2 * 3`.
 
 <CenteredImage
-  src="/src/assets/tdop_20260320132236.png"
+  name="tdop_20260320132236.png"
   alt="Current implementation always parses right-to-left, ignoring associativity"
-  class="mx-auto"
 />
 
 To solve this, the TDOP parser assigns each operator a
@@ -451,15 +447,14 @@ binding powers of `10` and `20`,
 then `3` must associate with `*`.
 
 <CenteredImage
-  src="/src/assets/tdop_20260320174010.png"
+  name="tdop_20260320174010.png"
   alt="3 associates with * because * has higher binding power than +"
-  class="mx-auto"
 />
 
 The correct tree with binding power assigned to each operator should be:
 
 <CenteredImage
-  src="/src/assets/tdop_20260320132928.png"
+  name="tdop_20260320132928.png"
   alt="Parse tree for 1 + 2 * 3 + 4"
 />
 
@@ -473,7 +468,7 @@ must always be computed first. In other words,
 they are *binded* tightly together to the lower part of the tree.
 
 <CenteredImage
-  src="/src/assets/tdop_20260320133030.png"
+  name="tdop_20260320133030.png"
   alt="Child node has binding power of 20, when parent node has binding power of 10"
 />
 
@@ -489,7 +484,7 @@ Let's illustrate this idea by building the parse tree step-by-step.
 - At the beginning, there is only one root node with binding power `0`.
 
   <CenteredImage
-    src="/src/assets/tdop_20260320174403.png"
+    name="tdop_20260320174403.png"
     alt="There is only one root node with bp = 0"
   />
 
@@ -497,7 +492,7 @@ Let's illustrate this idea by building the parse tree step-by-step.
   move to `+` right subtree.
 
   <CenteredImage
-    src="/src/assets/tdop_20260228145826.png"
+    name="tdop_20260228145826.png"
     alt="Associate 1 with +'s left and move to +'s right"
   />
 
@@ -506,14 +501,14 @@ Let's illustrate this idea by building the parse tree step-by-step.
   move to `*` right subtree.
 
   <CenteredImage
-    src="/src/assets/tdop_20260228150630.png"
+    name="tdop_20260228150630.png"
     alt="Associate 2 with *'s left and move to *'s right"
   />
 
 - Consume the next 2 tokens. Associate `3` with `*` (because `*` has higher binding power than `+`).
 
   <CenteredImage
-    src="/src/assets/tdop_20260320134733.png"
+    name="tdop_20260320134733.png"
     alt="Associate 3 with *'s right"
   />
 
@@ -522,7 +517,7 @@ Let's illustrate this idea by building the parse tree step-by-step.
   binding power - which is the root node, create a new child there, then move to its right.
 
   <CenteredImage
-    src="/src/assets/tdop_20260320134933.png"
+    name="tdop_20260320134933.png"
     alt="Replace root child with +'s left"
   />
 
@@ -530,7 +525,7 @@ Let's illustrate this idea by building the parse tree step-by-step.
   with `+`.
 
   <CenteredImage
-    src="/src/assets/tdop_20260228152211.png"
+    name="tdop_20260228152211.png"
     alt="Associate 4 to +'s right"
   />
 
@@ -798,7 +793,7 @@ The failed test is `-2 * 3`. Look at its parse tree, `2 * 3` is computed
 before `-2`, meaning `*` operator binds more tightly than minus (`-`) operator.
 
 <CenteredImage
-  src="/src/assets/tdop_20260320144509.png"
+  name="tdop_20260320144509.png"
   alt="* is computed before minus operator (-)"
 />
 
