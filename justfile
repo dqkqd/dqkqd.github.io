@@ -6,4 +6,4 @@ style:
   npm run lint::fix
 
 remove_unused_assets:
-  grep -vFf <(rg -N -I -o -r 'src/assets/$1' 'src="/src/assets/([^"/]+\.png)"' src) <(find src/assets -name "*.png") | sort | uniq | xargs rm
+  grep -vFf <(rg -N -I -o -r 'src/assets/$1' 'name="([^"/]+\.png)"' src) <(find src/assets -name "*.png") | sort | uniq | xargs rm

@@ -9,6 +9,7 @@ interface Props {
 
 const { name, alt } = Astro.props;
 const src = `/src/assets/${name}`;
+const caption = alt;
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/*.{jpeg,jpg,png,gif}",
 );
@@ -18,4 +19,7 @@ if (!images[src])
   );
 ---
 
-<Image src={images[src]()} alt={alt} format="png" class="mx-auto" />
+<figure class="mx-auto text-center">
+  <Image src={images[src]()} alt={alt} format="png" />
+  <figcaption>{caption}</figcaption>
+</figure>
