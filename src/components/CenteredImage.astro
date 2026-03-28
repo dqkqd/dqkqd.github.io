@@ -21,5 +21,5 @@ if (!images[src])
 
 <figure class="mx-auto text-center">
   <Image src={images[src]()} alt={alt} format="png" class="mx-auto" />
-  <figcaption>{caption}</figcaption>
+  {caption && <figcaption>{caption}</figcaption>}
 </figure>
