@@ -10,6 +10,9 @@ import {
   transformerNotationWordHighlight,
 } from "@shikijs/transformers";
 import sitemap from "@astrojs/sitemap";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://dqkqd.github.io",
@@ -34,5 +37,23 @@ export default defineConfig({
         transformerNotationWordHighlight(),
       ],
     },
+    rehypePlugins: [
+      rehypeSlug,
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: "append",
+          properties: {
+            style: "text-decoration: none; color: inherit;",
+          },
+          content: {
+            type: "element",
+            tagName: "span",
+            properties: { className: ["anchor-icon"], ariaHidden: "true" },
+            children: [{ type: "text", value: " #" }],
+          },
+        },
+      ],
+    ],
   },
 });
