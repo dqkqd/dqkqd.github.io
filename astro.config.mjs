@@ -9,13 +9,12 @@ import {
   transformerNotationErrorLevel,
   transformerNotationWordHighlight,
 } from "@shikijs/transformers";
-import vue from "@astrojs/vue";
 import sitemap from "@astrojs/sitemap";
 // https://astro.build/config
 export default defineConfig({
   site: "https://dqkqd.github.io",
 
-  integrations: [mdx(), vue(), sitemap()],
+  integrations: [mdx(), sitemap()],
 
   vite: {
     plugins: [tailwindcss()],
