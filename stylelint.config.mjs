@@ -6,4 +6,5 @@ export default {
     "stylelint-config-recommended-vue",
     "stylelint-config-tailwindcss",
   ],
+  ignoreFiles: ["**/dist/**"],
 };
