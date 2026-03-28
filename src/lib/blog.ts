@@ -4,6 +4,7 @@ export type BlogEntry = CollectionEntry<"blog"> & { href: string };
 
 export async function getSortedBlogs(): Promise<BlogEntry[]> {
   return (await getCollection("blog"))
+    .filter((post) => (import.meta.env.PROD ? post.data.draft !== true : true))
     .sort((a, b) => b.data.pubDatetime.valueOf() - a.data.pubDatetime.valueOf())
     .map((blog) => ({
       ...blog,
