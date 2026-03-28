@@ -27,7 +27,10 @@ for example, when a parser sees `print`, it knows the
 expression might be `print(<something>)`, and applies
 that pattern to create a parse tree.
 
-<CenteredImage name="tdop-parser-background.png" alt="Parsing flows" />
+<CenteredImage
+  name="tdop-parser-background.png"
+  alt="Source code is tokenized, then the tokens are fed into the parser"
+/>
 
 We can parse `print("Hello World")` like this, just walk straight
 from left to right, consuming tokens as we move forward.
@@ -436,7 +439,7 @@ which is incorrect because `3 + 4` is calculated before `2 * 3`.
 
 <CenteredImage
   name="tdop_20260320132236.png"
-  alt="Current implementation always parses right-to-left, ignoring associativity"
+  alt="The current implementation always parses right-to-left, ignoring associativity"
 />
 
 To solve this, the TDOP parser assigns each operator a
@@ -448,7 +451,7 @@ then `3` must associate with `*`.
 
 <CenteredImage
   name="tdop_20260320174010.png"
-  alt="3 associates with * because * has higher binding power than +"
+  alt="3 associates with *, which has higher binding power than +"
 />
 
 The correct tree with binding power assigned to each operator should be:
@@ -469,7 +472,7 @@ they are *binded* tightly together to the lower part of the tree.
 
 <CenteredImage
   name="tdop_20260320133030.png"
-  alt="Child node has binding power of 20, when parent node has binding power of 10"
+  alt="Child node has higher binding power than parent node (20 > 10)"
 />
 
 Using this observation,
